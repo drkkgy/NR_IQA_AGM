@@ -9,6 +9,14 @@
 
 We present the first systematic evaluation of six prominent pretrained backbones (CLIP, SigLIP2, DINOv2, DINOv3, Perception, and ResNet) for No-Reference Image Quality Assessment (NR-IQA). Our study uncovers that (1) SigLIP2 consistently achieves strong performance, and (2) the choice of activation function plays a surprisingly crucial role. We introduce a **learnable activation selection mechanism** that adaptively determines the nonlinearity for each channel, achieving new state-of-the-art SRCC on **CLIVE**, **KADID10K**, and **AGIQA3K**.
 
+## Quick Start
+
+```bash
+git clone https://github.com/drkkgy/NR_IQA_AGM.git && cd NR_IQA_AGM
+pip install -r requirements.txt
+python eval.py --dataset CLIVE              # evaluate pretrained checkpoint
+```
+
 ## Architecture
 
 ![Architecture](resources/architecture_AGM.png)
@@ -176,6 +184,45 @@ These use the **MLP3_Gated** head (activation gating) with LoRA on SigLIP-2:
 > More pretrained checkpoints (cross-dataset) will be added in subsequent updates.
 
 `eval.py` automatically picks the pretrained checkpoint when available — no `--checkpoint_dir` needed.
+
+## Results
+
+Performance comparison with state-of-the-art methods on seven benchmark datasets. Values represent SRCC and PLCC averaged over three runs (seeds: 8, 19, 25). **B**: Baseline, **B_Sig**: Baseline_Sigmoid, **B_Gated**: Baseline_Gated (Ours).
+
+### (a) Non-diffusion methods
+
+| Method | CLIVE | | KonIQ10K | | FLIVE | | SPAQ | | AGIQA3K | | AGIQA1K | | KADID10K | | Average | |
+|--------|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
+| | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC |
+| ILNIQE | .508 | .508 | .523 | .537 | - | - | .713 | .712 | - | - | - | - | .534 | .558 | .570 | .579 |
+| BRISQUE | .629 | .629 | .681 | .685 | .303 | .341 | .809 | .817 | - | - | - | - | .528 | .567 | .590 | .608 |
+| WaDIQaM | .682 | .671 | .804 | .807 | .455 | .467 | - | - | - | - | - | - | .739 | .752 | .670 | .674 |
+| DBCNN | .851 | .869 | .875 | .884 | .545 | .551 | .911 | .915 | - | - | - | - | .851 | .856 | .807 | .815 |
+| TIQA | .845 | .861 | .892 | .903 | .541 | .581 | - | - | - | - | - | - | .850 | .855 | .782 | .800 |
+| MetaIQA | .835 | .802 | .887 | .856 | .540 | .507 | - | - | - | - | - | - | .762 | .775 | .756 | .735 |
+| P2P-BM | .844 | .842 | .872 | .885 | .526 | .598 | - | - | - | - | - | - | .840 | .849 | .770 | .793 |
+| HyperIQA | .859 | .882 | .906 | .917 | .544 | .602 | .911 | .915 | - | - | - | - | .852 | .845 | .814 | .832 |
+| TReS | .846 | .877 | .915 | .928 | .554 | .625 | - | - | - | - | - | - | .859 | .859 | .794 | .822 |
+| MUSIQ | .702 | .746 | .916 | .928 | .566 | .661 | .918 | .921 | - | - | - | - | .875 | .872 | .795 | .826 |
+| CONTRIQUE | - | - | - | - | - | - | - | - | .804 | .868 | .670 | .708 | - | - | .737 | .788 |
+| RE-IQA | .840 | .854 | .914 | .923 | **.645** | **.733** | .918 | .925 | .785 | .845 | .614 | .670 | .872 | .885 | .798 | .834 |
+| GenZIQA | - | - | - | - | - | - | - | - | .832 | .892 | .840 | .861 | - | - | .836 | .877 |
+| LoDA | .876 | .899 | .932 | .944 | .578 | .679 | .925 | .928 | - | - | - | - | .931 | .936 | .848 | .877 |
+| QCN | .875 | .893 | .934 | .945 | .644 | .741 | .923 | .928 | - | - | - | - | - | - | - | - |
+| B | .875 | .905 | .932 | .943 | .533 | .641 | .927 | .931 | .865 | .917 | .857 | .889 | .961 | .964 | .850 | .884 |
+| **B_Sig (Ours)** | **.909** | **.930** | .938 | .947 | .521 | .608 | .921 | .926 | **.878** | **.923** | .872 | **.897** | .939 | .943 | .854 | .882 |
+| **B_Gated (Ours)** | .887 | .912 | **.953** | **.962** | .556 | .647 | **.928** | **.932** | .867 | .919 | **.873** | .892 | **.970** | **.973** | **.862** | **.891** |
+
+### (b) Diffusion methods
+
+| Method | CLIVE | | KonIQ10K | | FLIVE | | SPAQ | | AGIQA3K | | AGIQA1K | | KADID10K | | Average | |
+|--------|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
+| | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC | SRCC | PLCC |
+| DP-IQA | .893 | .913 | .942 | .951 | .579 | .683 | .923 | .926 | - | - | - | - | - | - | .834 | .868 |
+| LGDM | .908 | **.940** | **.967** | **.972** | **.705** | **.812** | **.947** | **.948** | .863 | **.929** | **.891** | **.903** | .958 | .961 | **.891** | **.924** |
+| B | .875 | .905 | .932 | .943 | .533 | .641 | .927 | .931 | .865 | .917 | .857 | .889 | .961 | .964 | .850 | .884 |
+| **B_Sig (Ours)** | **.909** | .930 | .938 | .947 | .521 | .608 | .921 | .926 | **.878** | .923 | .872 | .897 | .939 | .943 | .854 | .882 |
+| **B_Gated (Ours)** | .887 | .912 | .953 | .962 | .556 | .647 | .928 | .932 | .867 | .919 | .873 | .892 | **.970** | **.973** | .862 | .891 |
 
 ## Evaluation
 
