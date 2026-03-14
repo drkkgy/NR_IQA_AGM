@@ -1,0 +1,52 @@
+# Datasets (user-supplied, not tracked)
+Dataset/
+
+# Training outputs (pretrained_checkpoints/ is tracked — ships with the repo)
+checkpoints/
+best_checkpoints/
+resume_state/
+results/
+!pretrained_checkpoints/
+
+# GradCAM visualisations
+grad_cam/
+grad_cam_eval/
+
+# WandB
+wandb/
+
+# Cached embeddings
+*.pt
+!models/*.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.eggs/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+.venv/
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives (keep util_main.py but ignore other large backups)
+*.bak
