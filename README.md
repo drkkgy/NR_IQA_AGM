@@ -11,20 +11,11 @@ We present the first systematic evaluation of six prominent pretrained backbones
 
 ## Architecture
 
-```
-Image -> SigLIP-2 Vision Encoder (+ LoRA / DPT) -> [CLS] features (1152-d)
-                                                          |
-                                                    MLP3_Gated
-                                                    ├── Linear(1152, 512)
-                                                    ├── GatedBlend(ParamSigmoid + ParamLeakyReLU)
-                                                    ├── Linear(512, 512)
-                                                    ├── ParamLeakyReLU
-                                                    └── Linear(512, 1) -> quality score
-```
+![Architecture](resources/architecture_AGM.png)
 
 **Loss**: MSE + pair-wise margin ranking loss
 
-## Project Structure
+<!-- ## Project Structure
 
 ```
 NR_IQA_AGM/
@@ -51,7 +42,7 @@ NR_IQA_AGM/
 ├── requirements.txt          # pip dependencies
 ├── environment.yml           # Conda environment spec
 └── README.md
-```
+``` -->
 
 ## Dataset Setup
 
