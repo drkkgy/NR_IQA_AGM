@@ -1,6 +1,13 @@
-# NR-IQA AGM: No-Reference Image Quality Assessment with Activation-Gated MLP
+# Revisiting Vision-Language Foundations for No-Reference Image Quality Assessment
 
-A SigLIP-2 based no-reference image quality assessment model that uses **learnable activation gating** (a blend of parametric sigmoid and parametric leaky-ReLU) in its quality-prediction MLP head.
+### Official repository for the WACV 2026 paper
+
+**[Paper (PDF)](https://openaccess.thecvf.com/content/WACV2026/papers/Yadav_Revisiting_Vision-Language_Foundations_for_No-Reference_Image_Quality_Assessment_WACV_2026_paper.pdf)** | **[arXiv](https://arxiv.org/abs/2509.17374)** | **[WACV 2026 Open Access](https://openaccess.thecvf.com/content/WACV2026/html/Yadav_Revisiting_Vision-Language_Foundations_for_No-Reference_Image_Quality_Assessment_WACV_2026_paper.html)**
+
+> **Ankit Yadav, Ta Duc Huy, Lingqiao Liu**
+> The University of Adelaide
+
+We present the first systematic evaluation of six prominent pretrained backbones (CLIP, SigLIP2, DINOv2, DINOv3, Perception, and ResNet) for No-Reference Image Quality Assessment (NR-IQA). Our study uncovers that (1) SigLIP2 consistently achieves strong performance, and (2) the choice of activation function plays a surprisingly crucial role. We introduce a **learnable activation selection mechanism** that adaptively determines the nonlinearity for each channel, achieving new state-of-the-art SRCC on **CLIVE**, **KADID10K**, and **AGIQA3K**.
 
 ## Architecture
 
