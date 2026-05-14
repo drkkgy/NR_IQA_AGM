@@ -18,6 +18,8 @@ wandb/
 # Cached embeddings
 *.pt
 !models/*.py
+# Pretrained MLP heads that ship with the repo
+!pretrained_checkpoints/**/mlp.pt
 
 # Python
 __pycache__/
