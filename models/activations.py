@@ -32,19 +32,26 @@ class ParamLeakyReLU2(nn.Module):
 
 class ParamSigmoid2(nn.Module):
     """
-    sigma(alpha * x + beta) with learnable *alpha* (slope) and *beta* (bias).
+    sigma(alpha * x + beta) [* gamma] with learnable per-channel parameters.
+
+    When *use_gamma* is True an additional learnable scale ``gamma`` is
+    multiplied after the sigmoid, matching the ``ParamSigmoid2_2`` variant
+    used by some older checkpoints.
 
     Args:
         dim: hidden size (required when *per_channel=True*).
         init_alpha: initial slope.
         init_beta: initial bias.
-        per_channel: if True one pair per feature, else scalars.
+        per_channel: if True one set of parameters per feature, else scalars.
         clamp: clamp pre-sigmoid logit to [-clamp, clamp].
+        use_gamma: if True, register a learnable ``gamma`` scale parameter.
+        init_gamma: initial value of gamma (only used when *use_gamma=True*).
     """
 
     def __init__(self, dim: int | None = None, init_alpha: float = 1.0,
                  init_beta: float = 0.0, per_channel: bool = True,
-                 clamp: float = 20.0):
+                 clamp: float = 20.0, use_gamma: bool = False,
+                 init_gamma: float = 2.0):
         super().__init__()
         if per_channel:
             assert dim is not None, "dim (hidden size) required for per-channel parameters"
@@ -53,13 +60,24 @@ class ParamSigmoid2(nn.Module):
         else:
             self.alpha = nn.Parameter(torch.tensor(init_alpha, dtype=torch.float32))
             self.beta  = nn.Parameter(torch.tensor(init_beta,  dtype=torch.float32))
+
+        self.use_gamma = use_gamma
+        if use_gamma:
+            if per_channel:
+                self.gamma = nn.Parameter(torch.full((dim,), init_gamma, dtype=torch.float32))
+            else:
+                self.gamma = nn.Parameter(torch.tensor(init_gamma, dtype=torch.float32))
+
         self.clamp = clamp
 
     def forward(self, x):
         z = self.alpha * x + self.beta
         if self.clamp is not None:
             z = z.clamp(-self.clamp, self.clamp)
-        return torch.sigmoid(z)
+        out = torch.sigmoid(z)
+        if self.use_gamma:
+            out = self.gamma * out
+        return out
 
 
 class GatedBlend(nn.Module):
@@ -67,13 +85,17 @@ class GatedBlend(nn.Module):
     y = w * ParamSigmoid2(x) + (1 - w) * ParamLeakyReLU2(x)
     where w = sigmoid(g).  g is initialised to 0 so w starts at 0.5
     (balanced blend).
+
+    Pass *use_gamma=True* to use the ``ParamSigmoid2_2``-style sigmoid with
+    a learnable ``gamma`` scale (needed for some older checkpoints).
     """
 
     def __init__(self, dim: int, per_channel: bool = True,
                  init_alpha: float = 1.0, init_beta: float = 0.0,
-                 init_a: float = 0.25):
+                 init_a: float = 0.25, use_gamma: bool = False):
         super().__init__()
-        self.sig_act   = ParamSigmoid2(dim, init_alpha, init_beta, per_channel)
+        self.sig_act   = ParamSigmoid2(dim, init_alpha, init_beta, per_channel,
+                                        use_gamma=use_gamma)
         self.lrelu_act = ParamLeakyReLU2(dim, init_a, per_channel)
 
         if per_channel:

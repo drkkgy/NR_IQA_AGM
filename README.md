@@ -14,7 +14,16 @@ We present the first systematic evaluation of six prominent pretrained backbones
 ```bash
 git clone https://github.com/drkkgy/NR_IQA_AGM.git && cd NR_IQA_AGM
 pip install -r requirements.txt
-python eval.py --dataset CLIVE              # evaluate pretrained checkpoint
+
+# Reproduce every paper number in one command (skips runs whose dataset is missing)
+python eval_all.py
+
+# Discover the available pretrained runs, then evaluate one by name
+python eval_checkpoint.py --list
+python eval_checkpoint.py --run Gating_CLIVE
+
+# Evaluate the B_Gated (gating) checkpoint with GradCAM heatmaps
+python eval.py --dataset CLIVE
 ```
 
 ## Architecture
@@ -174,16 +183,29 @@ python train.py --dataset CLIVE --no_wandb
 
 ## Pretrained Checkpoints
 
-The repo ships with pretrained weights in `pretrained_checkpoints/`.
-These use the **MLP3_Gated** head (activation gating) with LoRA on SigLIP-2:
+The repo ships with seven pretrained runs in `pretrained_checkpoints/`,
+covering two architectures (**B\_Gated** with `MLP3_Gated` activation gating,
+and **B\_Sig** with `mlp_3_layer_sigmoid_siglip`), each as a LoRA adapter on
+SigLIP-2. Reference them by their short **run name**:
 
-| Train set | Test set | Checkpoint directory |
-|-----------|----------|---------------------|
-| CLIVE | CLIVE | `pretrained_checkpoints/Baseline_param_activation_gating_MSE_seed8_step_train_CLIVE_TestCLIVE_14010` |
+| Run name | Arch | Train set | Test set |
+|----------|------|-----------|----------|
+| `Gating_CLIVE`            | B\_Gated | CLIVE     | CLIVE     |
+| `Gating_KonIQ`            | B\_Gated | KonIQ-10K | KonIQ-10K |
+| `Gating_KonIQ_to_CLIVE`   | B\_Gated | KonIQ-10K | CLIVE     |
+| `Gating_CLIVE_to_KonIQ`   | B\_Gated | CLIVE     | KonIQ-10K |
+| `Sigmoid_CLIVE`           | B\_Sig   | CLIVE     | CLIVE     |
+| `Sigmoid_KonIQ`           | B\_Sig   | KonIQ-10K | KonIQ-10K |
+| `Sigmoid_KonIQ_to_CLIVE`  | B\_Sig   | KonIQ-10K | CLIVE     |
 
-> More pretrained checkpoints (cross-dataset) will be added in subsequent updates.
+Each registered run carries the same train/val split and seed used during
+training, so the reported SRCC/PLCC on the held-out partition match the
+paper. Pass `--run <name>` to `eval_checkpoint.py` and the right split is
+applied for you — no extra flags needed.
 
-`eval.py` automatically picks the pretrained checkpoint when available — no `--checkpoint_dir` needed.
+Run `python eval_checkpoint.py --list` to print the same table with the
+underlying checkpoint paths. `eval_all.py` iterates every entry and prints
+an SRCC/PLCC summary — see the **Evaluation** section below.
 
 ## Results
 
@@ -226,6 +248,13 @@ Performance comparison with state-of-the-art methods on seven benchmark datasets
 
 ## Evaluation
 
+There are two evaluation scripts:
+
+- **`eval.py`** — evaluates B\_Gated (MLP3\_Gated) checkpoints with optional GradCAM visualisation.
+- **`eval_checkpoint.py`** — unified script that supports **all three architectures** (Baseline, B\_Sig, B\_Gated) with auto-detection.
+
+### eval.py (B\_Gated only, with GradCAM)
+
 ```bash
 # Evaluate using the pretrained CLIVE->CLIVE checkpoint (auto-detected)
 python eval.py --dataset CLIVE
@@ -244,8 +273,6 @@ python eval.py --dataset SPAQ --no_gradcam
 python eval.py --dataset AGIQA3K --output my_results.json
 ```
 
-### Key Evaluation Arguments
-
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--dataset` | *required* | Dataset to evaluate on |
@@ -254,6 +281,95 @@ python eval.py --dataset AGIQA3K --output my_results.json
 | `--batch_size` | `4` | Evaluation batch size |
 | `--no_gradcam` | off | Skip GradCAM heatmap generation |
 | `--output` | auto | Path to save results JSON |
+
+### eval\_checkpoint.py (all architectures)
+
+Unified script supporting **Baseline**, **B\_Sig**, and **B\_Gated**
+architectures. Architecture is auto-detected from the checkpoint's `mlp.pt`
+state-dict keys (and the directory name) — manual override is available via
+`--arch`.
+
+| Architecture | MLP Head | Detection signal |
+|---|---|---|
+| **Baseline (B)** | `mlp_3_layer` (ReLU) | `adapter.*` keys, no "sigmoid" in path |
+| **B\_Sig** | `mlp_3_layer_sigmoid_siglip` (Sigmoid + LeakyReLU) | `adapter.*` keys, "sigmoid" or "b\_sig" in path |
+| **B\_Gated** | `MLP3_Gated` (learnable gated activations) | `act1.g*` keys |
+
+All shipped checkpoints are PEFT/LoRA adapters on top of
+`google/siglip2-so400m-patch16-512`, loaded with
+`peft.PeftModel.from_pretrained()` and merged for clean inference.
+
+#### By run name (recommended)
+
+```bash
+# List all pretrained runs
+python eval_checkpoint.py --list
+
+# Evaluate one by name (resolves checkpoint + arch + dataset from the registry)
+python eval_checkpoint.py --run Gating_CLIVE
+python eval_checkpoint.py --run Sigmoid_KonIQ_to_CLIVE
+
+# Override the registry's test dataset (cross-dataset experiment with the same checkpoint)
+python eval_checkpoint.py --run Gating_KonIQ --dataset AGIQA3K
+
+# Pick a specific GPU and save to a custom location
+python eval_checkpoint.py --run Gating_CLIVE --device cuda:1 --output clive.json
+```
+
+#### Ad-hoc evaluation (user-trained checkpoints)
+
+For checkpoints not in the registry, evaluation uses the same 20% held-out
+split as training — pass `--seed` so the partition can be reconstructed
+deterministically (use the same seed you trained with).
+
+```bash
+# Evaluate a user-trained checkpoint on its held-out 20% partition
+python eval_checkpoint.py \
+    --checkpoint best_checkpoints/AGM_seed8_train_CLIVE_test_CLIVE \
+    --dataset CLIVE \
+    --seed 8
+
+# Manually override the architecture if auto-detection picks wrong
+python eval_checkpoint.py \
+    --checkpoint /path/to/baseline_sigmoid_ckpt \
+    --dataset KonIQ_10K \
+    --seed 8 \
+    --arch baseline_sig
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--list` | off | Print the run registry and exit |
+| `--run` | none | Named run from the registry (see `--list`) |
+| `--checkpoint` | none | Path to checkpoint dir (required when `--run` is not given) |
+| `--dataset` | none | Dataset to evaluate on; overrides the registry's default when used with `--run` |
+| `--arch` | auto | Override architecture: `baseline`, `baseline_sig`, or `gating` |
+| `--seed` | required when `--run` is not set | Seed for the 80/20 `random_split`; must match the training seed |
+| `--data_dir` | `./Dataset` | Root directory of all datasets |
+| `--batch_size` | `4` | Evaluation batch size |
+| `--device` | `cuda` | Device string (`cuda`, `cuda:0`, `cuda:1`, `cpu`) |
+| `--output` | auto | Path to save results JSON |
+
+### eval\_all.py (reproduce every paper number in one shot)
+
+```bash
+# Run every pretrained checkpoint on its native test set
+python eval_all.py
+
+# Run only the gating-architecture checkpoints
+python eval_all.py --filter Gating
+
+# Larger batch size, alternate dataset root, save to a custom location
+python eval_all.py --data_dir /data/IQA --batch_size 8 --output my_sweep.json
+
+# Fail loudly on the first missing dataset (default: skip-with-warning)
+python eval_all.py --strict
+```
+
+Runs whose dataset is not present under `--data_dir` are skipped with a
+warning by default — useful when you only have a subset of benchmarks
+downloaded. After the sweep, an SRCC/PLCC summary table is printed to
+stdout and combined results are saved to `results/eval_all.json`.
 
 ## Evaluation Metrics
 
@@ -285,8 +401,10 @@ See [LICENSE](LICENSE).
 
 ## TODO
 
-- [ ] Add pretrained checkpoints for KonIQ-10K, SPAQ, KADID-10K, FLIVE, AGIQA-3K, AGIQA-1K
-- [ ] Add cross-dataset pretrained checkpoints (KonIQ-10K -> CLIVE, CLIVE -> KonIQ-10K, etc.)
+- [x] Add pretrained checkpoints for KonIQ-10K (B\_Gated, B\_Sig)
+- [x] Add cross-dataset pretrained checkpoints (KonIQ-10K -> CLIVE, CLIVE -> KonIQ-10K)
+- [ ] Add `Sigmoid_CLIVE_to_KonIQ` checkpoint (B\_Sig trained on CLIVE, tested on KonIQ-10K)
+- [ ] Add pretrained checkpoints for SPAQ, KADID-10K, FLIVE, AGIQA-3K, AGIQA-1K
 
 ## Citation
 
